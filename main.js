@@ -1,17 +1,23 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { existsSync, read } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
-import { Buffer, Blob } from 'buffer';
+import { Buffer } from 'buffer';
 
 import yargs from "yargs";
 import chalk from 'chalk';
 import * as dotenv from 'dotenv';
 import log4js from "log4js";
-import axios from 'axios';
+/*
+    use node-fetch instead axios because of axios issue
+    axios put binary is corrupted
+    https://github.com/axios/axios/issues/1250
+*/
+// import axios from 'axios';
 import fetch from 'node-fetch';
 
 import { convertCsvToJson, convertJsonArrayToText } from './utils/data_transformation.js';
 import { createGuestRecords, createUUID, getGzipInfo } from './helper/cdp_batch_data.js';
+import { wait } from './utils/timer.js';
 
 /*
     log configuration
@@ -91,8 +97,7 @@ logger.debug(`gzipJsonArrayFileName(generated gzip file): ${gzipJsonArrayFileNam
 // gzip info
 let gzipInfo = getGzipInfo(gzippedJsonArrayBuffer);
 logger.debug(`gzipInfo: ${JSON.stringify(gzipInfo)}`);
-// let gzipInfoFileName = `${jsonArrayFileName}.gz.info.json`;
-// await writeFile(gzipInfoFileName, JSON.stringify(gzipInfo, null, '\t'));
+
 
 /* 
     API Authorization info
@@ -105,6 +110,7 @@ let apiToken = process.env.API_TOKEN;
 if (api_token) {
     apiToken = api_token;
 }
+const basicAuth = "Basic " + Buffer.from(`${clientKey}:${apiToken}`).toString("base64");
 console.log(chalk.green(`clientKey = ${clientKey}`));
 console.log(chalk.green(`apiToken = ${apiToken}`));
 logger.debug(`clientKey: ${clientKey}`);
@@ -130,50 +136,40 @@ let presignRequestInfo = {
     uuid: batchUUID,
     url: presignedUrl
 };
-// let batchInfoFileName = `${jsonArrayFileName}.batch.info.json`;
-// await writeFile(batchInfoFileName, JSON.stringify(presignRequestInfo, null, '\t'));
 logger.debug(`presignRequestInfo: ${JSON.stringify(presignRequestInfo)}`);
 
 // execute presign request
-let presignResult = await axios.put(presignRequestInfo.url, {
-    checksum: presignRequestInfo.checksum,
-    size: presignRequestInfo.size
-}, {
-    auth: {
-        username: clientKey,
-        password: apiToken
-    },
-    headers: {
-        "Accept": "application/json",
-        "Content-Type": "application/json"
-    }
-}).catch(error => {
-    logger.debug(`pre sign request error`);
-    logger.debug(`error.message: ${error.message}`);
-    logger.debug(`error.response.data: ${JSON.stringify(error.response.data)}`);
-    logger.debug(`error.response.status: ${error.response.status}`);
-    logger.debug(`error.response.headers: ${JSON.stringify(error.response.headers)}`);
-    console.log(chalk.red(`pre sign request error`));
-    console.log(chalk.red(`error.message: ${error.message}`));
-    console.log(chalk.red(`error.response.data: ${JSON.stringify(error.response.data)}`));
-    console.log(chalk.red(`error.response.status: ${error.response.status}`));
-    console.log(chalk.red(`error.response.headers: ${JSON.stringify(error.response.headers)}`));
-    /* 
-        NOTE:
-        not use process.exit() here. 
-        if use it to stop, the process may ends befor writing the log by log4js
-     */
-});
+let presignResponse = null;
+try {
 
-// to avoid the process ends before writing the log, use if to confirm condeition instead using process.exit() to stop the process
-if(presignResult) {
+    presignResponse = await fetch(presignRequestInfo.url, {
+        method: "PUT",
+        body: JSON.stringify({
+            checksum: presignRequestInfo.checksum,
+            size: presignRequestInfo.size
+        }),
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": basicAuth
+        },
+    });
+
+} catch (error) {
+    console.log(chalk.red(error));
+    logger.error(error);
+}
+
+if(presignResponse && presignResponse.ok) {
     console.log(chalk.green("pre sign request success"));
     logger.debug("pre sign request success");
+
     /* 
         Batch pre signed info
      */
-    let batchPresignedInfo = presignResult.data;
-    console.log(chalk.green(JSON.stringify(batchPresignedInfo)));
+    // let batchPresignedInfo = presignResult.data;
+    let batchPresignedInfo = await presignResponse.json();
+    console.log(chalk.green(`batchPresignedInfo: ${JSON.stringify(batchPresignedInfo)}`));
     logger.debug(`batchPresignedInfo: ${JSON.stringify(batchPresignedInfo)}`);
 
     /* 
@@ -185,43 +181,15 @@ if(presignResult) {
         href: batchPresignedInfo.location.href,
         md5: Buffer.from(gzipInfo.checksum, "hex").toString("base64") 
     }
-    // let uploadInfoFileName = `${jsonArrayFileName}.upload.info.json`;
-    // await writeFile(uploadInfoFileName, JSON.stringify(uploadRequestInfo, null, '\t'));
+    console.log(chalk.green(`uploadRequestInfo: ${JSON.stringify(uploadRequestInfo)}`));
     logger.debug(`uploadRequestInfo: ${JSON.stringify(uploadRequestInfo)}`);
 
     // execute upload request
-    
     let uploadUrl = uploadRequestInfo.href;
     console.log(chalk.green(`uploadUrl: ${uploadUrl}`));
-    /*
-        axios issue
-        axios put binary is corrupted
-        https://github.com/axios/axios/issues/1250
-     */
-    // let uploadResult = await axios.put(uploadUrl, gzippedJsonArrayBuffer, {
-    //     headers: {
-    //         "Accept": "application/json",
-    //         "x-amz-server-side-encryption": "AES256",
-    //         "Content-Md5": uploadRequestInfo.md5,
-    //         'Content-Type': 'application/octet-stream'
-    //     }
-    // }).catch(error => {
-    //     logger.debug(`upload file request error`);
-    //     logger.debug(`error.message: ${error.message}`);
-    //     logger.debug(`error.response.data: ${JSON.stringify(error.response.data)}`);
-    //     logger.debug(`error.response.status: ${error.response.status}`);
-    //     logger.debug(`error.response.headers: ${JSON.stringify(error.response.headers)}`);
-    //     console.log(chalk.red(`upload file request error`));
-    //     console.log(chalk.red(`error.message: ${error.message}`));
-    //     console.log(chalk.red(`error.response.data: ${JSON.stringify(error.response.data)}`));
-    //     console.log(chalk.red(`error.response.status: ${error.response.status}`));
-    //     console.log(chalk.red(`error.response.headers: ${JSON.stringify(error.response.headers)}`));
-    // });
-
-    // use node-fetch instead of axios
+    let uploadResponse = null;
     try {
-
-        let uploadResult = await fetch(uploadUrl, {
+        uploadResponse = await fetch(uploadUrl, {
             method: "PUT",
             body: gzippedJsonArrayBuffer,
             headers: {
@@ -230,18 +198,58 @@ if(presignResult) {
                 "Content-Md5": uploadRequestInfo.md5
             }
         });
-    
-        if(uploadResult) {
-            console.log(chalk.green("upload file request success"));
-    
-            let uploadedInfo = presignResult.data;
-            logger.debug(`uploadedInfo: ${JSON.stringify(uploadedInfo)}`);
-        }
-
     } catch (error) {
         console.log(chalk.red(error));
+        logger.error(error);
     }
-    
 
+    if(uploadResponse && uploadResponse.ok) {
+        console.log(chalk.green("upload file request success"));
+
+        /* 
+            Check Batch Process progress
+         */
+        let checkStatusUrl = `${baseUrl}/v2/batches/${batchPresignedInfo.ref}`;
+        let errorInCheck = false;
+        let finishCheck = false;
+
+        while(!(finishCheck || errorInCheck)) {
+
+            // send request to check Batch status
+            let checkStatusResponse = null;
+            try {
+                checkStatusResponse = await fetch(checkStatusUrl, {
+                    method: "GET",
+                    headers: {
+                        "Accept": "application/json",
+                        "Authorization": basicAuth
+                    }
+                });
+            } catch (error) {
+                console.log(chalk.red(error));
+                logger.error(error);
+                errorInCheck = true;
+            }
+
+            // check if Batch is finished from response
+            if(checkStatusResponse && checkStatusResponse.ok) {
+
+                let batchStatusInfo = await checkStatusResponse.json();
+                if (batchStatusInfo.status.log) {
+                    console.log(chalk.green(`batchStatusInfo: ${JSON.stringify(batchStatusInfo)}`));
+                    logger.debug(`batchStatusInfo: ${JSON.stringify(batchStatusInfo)}`);
+                    console.log(chalk.green(`log: ${batchStatusInfo.status.log}`));
+                    logger.debug(`log: ${batchStatusInfo.status.log}`);
+                    finishCheck = true;
+                } else {
+                    console.log(chalk.green(`batchStatusInfo.status.code: ${batchStatusInfo.status.code}`));
+                }
+
+            } else {
+                errorInCheck = true;
+            }
+            await wait(5000);
+        }
+    }
 }
 
