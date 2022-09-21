@@ -1,0 +1,5 @@
+Options:
+    --file: file path containing csv format data
+    --identifiers: customer identifiers (column header is identifier.provider. value is identifier.id)
+    --subscriptions: guest subscription data (column header is subscription.channel, value is status), to use this option --pointOfSale is required
+    --pointOfSale: value is column to have the value of store front which is associated with the subscription associated.
