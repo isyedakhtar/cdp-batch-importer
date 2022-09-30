@@ -46,6 +46,7 @@ const file = argv.file;
 const identifiers = argv.identifiers ? argv.identifiers.split(",") : [];
 const subscriptions = argv.subscriptions ? argv.subscriptions.split(",") : [];
 const pointOfSale = argv.pointOfSale;
+const convertonly = argv.convertonly;
 const client_key = argv.CLIENT_KEY;
 const api_token = argv.API_TOKEN;
 console.log(chalk.green(`file = ${JSON.stringify(file)}`));
@@ -98,6 +99,12 @@ logger.debug(`gzipJsonArrayFileName(generated gzip file): ${gzipJsonArrayFileNam
 let gzipInfo = getGzipInfo(gzippedJsonArrayBuffer);
 logger.debug(`gzipInfo: ${JSON.stringify(gzipInfo)}`);
 
+// if there is a convertonly flag process will end
+if (convertonly) {
+    let gzipInfoFileName = jsonArrayFileName.replaceAll(".json", ".info.json");
+    await writeFile(gzipInfoFileName, JSON.stringify(gzipInfo, null, "\t"));
+    process.exit();
+}
 
 /* 
     API Authorization info
@@ -243,6 +250,10 @@ if(presignResponse && presignResponse.ok) {
                     finishCheck = true;
                 } else {
                     console.log(chalk.green(`batchStatusInfo.status.code: ${batchStatusInfo.status.code}`));
+                    if (batchStatusInfo.status.code.localeCompare("success") === 0) {
+                        finishCheck = true;
+                        break;
+                    }
                 }
 
             } else {

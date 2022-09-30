@@ -23,7 +23,7 @@ country: null, // string | ex. "IE", "GB", "ES", "FR"
 postcode: null, // string
 state: null, // string 
 */
-const standardAttributes = ["firstSeen", "lastSeen", "guestType", "title", "firstName", "lastName", "gender", "dateOfBirth", "email", "phoneNumbers", "language", "nationality", "passportNumber", "passportExpiry", "street", "city", "country", "country", "postcode", "state"];
+const standardAttributes = ["firstSeen", "lastSeen", "guestType", "title", "firstName", "lastName", "gender", "dateOfBirth", "email", "phoneNumbers", "language", "nationality", "passportNumber", "passportExpiry", "street", "city", "country", "postcode", "state"];
 const subscriptionAttributes = ["EMAIL", "MOBILE_APP", "MOBILE_WEB"];
 
 function buildExtensionData(attributes) {
@@ -40,7 +40,11 @@ function buildExtensionData(attributes) {
     subscriptionAttributes.forEach(item => {
         delete ext[item];
     })
-    return ext;
+    if (Object.keys(ext).length <= 2) {
+        return {};
+    } else {
+        return ext;
+    }
 }
 
 function buildIdentifiers(attributes, identifiers) {
@@ -199,12 +203,22 @@ export function createGuestRecord(attributes, { mode = "upsert", identifiers = [
         ...standardCustomerAttributes,
         ...identifiersObj,
         ...subscriptionsObj,
-        extensions: [
-            {
-                ...extension
-            }
-        ]
+        // extensions: [
+        //     {
+        //         ...extension
+        //     }
+        // ]
     };
+    if (extension) {
+        record.value = {
+            ...record.value,
+            extensions: [
+                {
+                    ...extension
+                }
+            ]
+        }
+    }
     return record;
 }
 
