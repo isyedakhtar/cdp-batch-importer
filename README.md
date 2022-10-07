@@ -1,4 +1,5 @@
 # How to use
+https://www.youtube.com/watch?v=MAg6MILcgLI
 
 ## Import CSV data with specific IDs
 node main.js --file ./data/customer.csv --identifiers email,customerId
