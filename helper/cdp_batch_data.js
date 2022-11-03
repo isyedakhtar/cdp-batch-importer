@@ -23,67 +23,87 @@ country: null, // string | ex. "IE", "GB", "ES", "FR"
 postcode: null, // string
 state: null, // string 
 */
-const standardAttributes = ["firstSeen", "lastSeen", "guestType", "title", "firstName", "lastName", "gender", "dateOfBirth", "email", "phoneNumbers", "language", "nationality", "passportNumber", "passportExpiry", "street", "city", "country", "postcode", "state"];
+const standardAttributes = [
+  "firstSeen",
+  "lastSeen",
+  "guestType",
+  "title",
+  "firstName",
+  "lastName",
+  "gender",
+  "dateOfBirth",
+  "email",
+  "phoneNumbers",
+  "language",
+  "nationality",
+  "passportNumber",
+  "passportExpiry",
+  "street",
+  "city",
+  "country",
+  "postcode",
+  "state",
+];
 const subscriptionAttributes = ["EMAIL", "MOBILE_APP", "MOBILE_WEB"];
 
 function buildExtensionData(attributes) {
-    let ext = {
-        name: "ext",
-        key: "default",
-        ...attributes
-    };
-    // delete standard attributes
-    standardAttributes.forEach(item => {
-        delete ext[item];
-    });
-    // delete subscription attributes
-    subscriptionAttributes.forEach(item => {
-        delete ext[item];
-    })
-    if (Object.keys(ext).length <= 2) {
-        return {};
-    } else {
-        return ext;
-    }
+  let ext = {
+    name: "ext",
+    key: "default",
+    ...attributes,
+  };
+  // delete standard attributes
+  standardAttributes.forEach((item) => {
+    delete ext[item];
+  });
+  // delete subscription attributes
+  subscriptionAttributes.forEach((item) => {
+    delete ext[item];
+  });
+  if (Object.keys(ext).length <= 2) {
+    return {};
+  } else {
+    return ext;
+  }
 }
 
 function buildIdentifiers(attributes, identifiers) {
-    let attributeKeys = Object.keys(attributes);
-    let idKeys = attributeKeys.filter(key => {
-        let compareResult = false;
-        for (let ii = 0; ii < identifiers.length; ii++) {
-            if (identifiers[ii].localeCompare(key) === 0) {
-                compareResult = true;
-                break;
-            }
-        }
-        return compareResult;
-    });
-    
-    if (idKeys.length > 0) {
-        let ids = [];
-        idKeys.forEach(key => {
-            let idObj = {
-                provider: key,
-                id: attributes[key]
-            }
-            ids.push(idObj);
-        });
-        return {
-            identifiers: ids
-        };
-    } else {
-        return {};
+  let attributeKeys = Object.keys(attributes);
+  let idKeys = attributeKeys.filter((key) => {
+    let compareResult = false;
+    for (let ii = 0; ii < identifiers.length; ii++) {
+      if (identifiers[ii].localeCompare(key) === 0) {
+        compareResult = true;
+        break;
+      }
     }
+    return compareResult;
+  });
+
+  if (idKeys.length > 0) {
+    let ids = [];
+    idKeys.forEach((key) => {
+      let idObj = {
+        provider: key,
+        id: attributes[key],
+      };
+      ids.push(idObj);
+    });
+    return {
+      identifiers: ids,
+    };
+  } else {
+    return {};
+  }
 }
 
 function buildRecordTemplate() {
-    return {
-        ref: createUUID(),
-        schema: "",
-        mode: "",
-        value: {
-            /*
+  return {
+    ref: createUUID(),
+    schema: "",
+    mode: "",
+    value: {
+      /*
             subscriptions: [
                 {
                     "name":"default",
@@ -94,8 +114,8 @@ function buildRecordTemplate() {
                 }
             ] 
              */
-            // subscriptions: [],
-            /*
+      // subscriptions: [],
+      /*
             identifiers: [
                 {
                     "provider":"BOXEVER_IDENTITY_SYSTEM",
@@ -104,8 +124,8 @@ function buildRecordTemplate() {
                 }
             ] 
              */
-            // identifiers: [],
-            /*
+      // identifiers: [],
+      /*
             extensions: [
                 {
                     "name":"ext",  // name must be ext
@@ -117,133 +137,147 @@ function buildRecordTemplate() {
                 }
             ] 
              */
-            // extensions: []
-        }
-    };
+      // extensions: []
+    },
+  };
 }
 
 function buildStatndardCustomerAttributes(attributes) {
-    let keys = Object.keys(attributes);
-    let standardKeys = keys.filter(key => {
-            return standardAttributes.includes(key);
+  let keys = Object.keys(attributes);
+  let standardKeys = keys.filter((key) => {
+    return standardAttributes.includes(key);
+  });
+  if (standardKeys.length > 0) {
+    let standardField = {};
+    standardKeys.forEach((key) => {
+      if (attributes[key]) {
+        if (key.localeCompare("street") === 0) {
+          standardField[key] = attributes[key].split(" ");
+        } else if (key.localeCompare("phoneNumbers") === 0) {
+          standardField[key] = attributes[key].split(",");
+        } else {
+          standardField[key] = attributes[key];
+        }
+      }
     });
-    if (standardKeys.length > 0) {
-        let standardField = {};
-        standardKeys.forEach(key => {
-            if (attributes[key]) {
-                if (key.localeCompare("street") === 0) {
-                    standardField[key] = attributes[key].split(" ");
-                } else if (key.localeCompare("phoneNumbers") === 0) {
-                    standardField[key] = attributes[key].split(",");
-                } else {
-                    standardField[key] = attributes[key];
-                }
-            }
-        });
-        return standardField
-    } else {
-        return {};
-    }
+    return standardField;
+  } else {
+    return {};
+  }
 }
 
 function buildSubscriptions(attributes, subscriptions, pointOfSale) {
-    if (subscriptions.length === 0 || !pointOfSale) return {};
+  if (subscriptions.length === 0 || !pointOfSale) return {};
 
-    let keys = Object.keys(attributes);
-    let subscriptionKeys = keys.filter( key => {
-        let compareResult = false;
-        for(let ii = 0; ii < subscriptions.length; ii++) {
-            if (subscriptions[ii].localeCompare(key) === 0) {
-                compareResult = true;
-                break;
-            }
-        }
-        return compareResult;
-    });
-
-    if (subscriptionKeys.length > 0) {
-        let subs = [];
-        subscriptionKeys.forEach( key => {
-            let subObj = {
-                name: key,
-                pointOfSale: pointOfSale,
-                channel: key,
-                status: attributes[key]
-            }
-            subs.push(subObj);
-        });
-        return {
-            subscriptions: subs
-        };
-    } else {
-        return {};
+  let keys = Object.keys(attributes);
+  let subscriptionKeys = keys.filter((key) => {
+    let compareResult = false;
+    for (let ii = 0; ii < subscriptions.length; ii++) {
+      if (subscriptions[ii].localeCompare(key) === 0) {
+        compareResult = true;
+        break;
+      }
     }
+    return compareResult;
+  });
 
+  if (subscriptionKeys.length > 0) {
+    let subs = [];
+    subscriptionKeys.forEach((key) => {
+      let subObj = {
+        name: key,
+        pointOfSale: pointOfSale,
+        channel: key,
+        status: attributes[key],
+      };
+      subs.push(subObj);
+    });
+    return {
+      subscriptions: subs,
+    };
+  } else {
+    return {};
+  }
 }
 
 /*
     Exported functions 
  */
 // create a guest record using key value pair attributes which is read by csv.
-export function createGuestRecord(attributes, { mode = "upsert", identifiers = ["email"], subscriptions = [], pointOfSale }) {
-    // console.log(chalk.green("=== createGuestRecord ==="));
-    // console.log(chalk.green(`mode = ${mode}`));
-    // console.log(chalk.green(`identifiers = ${identifiers}`));
-    // console.log(chalk.green(`subscriptions = ${subscriptions}`));
-    // console.log(chalk.green(`pointOfSale = ${pointOfSale}`));
+export function createGuestRecord(
+  attributes,
+  { mode = "upsert", identifiers = ["email"], subscriptions = [], pointOfSale }
+) {
+  // console.log(chalk.green("=== createGuestRecord ==="));
+  // console.log(chalk.green(`mode = ${mode}`));
+  // console.log(chalk.green(`identifiers = ${identifiers}`));
+  // console.log(chalk.green(`subscriptions = ${subscriptions}`));
+  // console.log(chalk.green(`pointOfSale = ${pointOfSale}`));
 
-    let record = buildRecordTemplate();
-    record.schema = "guest";
-    record.mode = mode;
-    let standardCustomerAttributes = buildStatndardCustomerAttributes(attributes);
-    let identifiersObj = buildIdentifiers(attributes, identifiers);
-    let subscriptionsObj = buildSubscriptions(attributes, subscriptions, pointOfSale);
-    let extension = buildExtensionData(attributes);
+  let record = buildRecordTemplate();
+  record.schema = "guest";
+  record.mode = mode;
+  let standardCustomerAttributes = buildStatndardCustomerAttributes(attributes);
+  let identifiersObj = buildIdentifiers(attributes, identifiers);
+  let subscriptionsObj = buildSubscriptions(
+    attributes,
+    subscriptions,
+    pointOfSale
+  );
+  let extension = buildExtensionData(attributes);
+  record.value = {
+    ...standardCustomerAttributes,
+    ...identifiersObj,
+    ...subscriptionsObj,
+    // extensions: [
+    //     {
+    //         ...extension
+    //     }
+    // ]
+  };
+  if (extension) {
     record.value = {
-        ...standardCustomerAttributes,
-        ...identifiersObj,
-        ...subscriptionsObj,
-        // extensions: [
-        //     {
-        //         ...extension
-        //     }
-        // ]
+      ...record.value,
+      extensions: [
+        {
+          ...extension,
+        },
+      ],
     };
-    if (extension) {
-        record.value = {
-            ...record.value,
-            extensions: [
-                {
-                    ...extension
-                }
-            ]
-        }
-    }
-    return record;
+  }
+  return record;
 }
 
 // create multiple guest records using key value pair attributes which is read by csv.
-export function createGuestRecords(records = [], { mode = "upsert", identifiers = ["email"], subscriptions = [], pointOfSale }) {
-    let guestRecords = records.map( record => {
-        let guestRecord = createGuestRecord(record, { mode, identifiers, subscriptions, pointOfSale })
-        return guestRecord;
+export function createGuestRecords(
+  records = [],
+  { mode = "upsert", identifiers = ["email"], subscriptions = [], pointOfSale }
+) {
+  let guestRecords = records.map((record) => {
+    let guestRecord = createGuestRecord(record, {
+      mode,
+      identifiers,
+      subscriptions,
+      pointOfSale,
     });
-    return guestRecords;
+    return guestRecord;
+  });
+  return guestRecords;
 }
 
 // generate v5 uuid
 export function createUUID() {
-    let namespace = crypto.randomUUID();
-    let name = (new Date).toISOString();
-    return uuid.v5(name, namespace);
+  let namespace = crypto.randomUUID();
+  let name = new Date().toISOString();
+  return uuid.v5(name, namespace);
 }
 
 // get gzip information to send a request of Batch API
 export function getGzipInfo(buffer) {
-    let hash = crypto.createHash('md5');
-    let digest = hash.update(buffer).digest("hex");
-    return {
-        checksum: digest,
-        size: buffer.length
-    };
+  let hash = crypto.createHash("md5");
+  let digest = hash.update(buffer).digest("hex");
+  return {
+    checksum: digest,
+    size: buffer.length,
+  };
 }

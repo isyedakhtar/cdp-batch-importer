@@ -1,2 +1,2 @@
-customerId,firstSeen,lastSeen,guestType,title,lastName,firstName,gender,dateOfBirth,email,phoneNumbers,language,nationality,passportNumber,passportExpiry,street,city,country,postcode,state,zipCode,EMAIL,prefecture,address4,address3,address2,address1,birthDate
-999999,2022-05-02T09:10:00.000Z,2022-08-02T09:10:00.000Z,customer,Mr,Test,Taro,male,1999-11-11T00:00Z,test.taro@example.com,81801234567,JA,Japan,,,丸の内 1丁目,千代田区,JP,100-0005,東京都,100-0005,SUBSCRIBED,東京都,千代田区,丸の内,1丁目,,1999/11/11
+ customerId,firstSeen,lastSeen,guestType,title,lastName,firstName,gender,dateOfBirth,email,phoneNumbers,language,nationality,passportNumber,passportExpiry,street,city,country,postcode,state,zipCode,EMAIL,prefecture,address4,address3,address2,address1,birthDate
+ 999999,2022-05-02T09:10:00.000Z,2022-08-02T09:10:00.000Z,customer,Mr,Test,Taro,male,1999-11-11T00:00Z,test.taro@example.com,81801234567,JA,Japan,,,丸の内 1丁目,千代田区,JP,100-0005,東京都,100-0005,SUBSCRIBED,東京都,千代田区,丸の内,1丁目,,1999/11/11
